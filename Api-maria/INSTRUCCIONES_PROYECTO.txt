@@ -1,0 +1,94 @@
+=========================================================
+      SISTEMA DE MICROSERVICIOS PARA COWORKING
+=========================================================
+Arquitectura: FastAPI (Python), Gin (Golang), Spring Boot (Java), Nginx, PostgreSQL y Docker.
+
+Este proyecto es una API completa basada en microservicios para gestionar un espacio de Coworking. Permite registrar usuarios, crear espacios (oficinas, salas de reuniones) y gestionar reservas.
+
+Existen dos tipos de roles en este sistema:
+- ADMIN (Administradores): Pueden crear/editar espacios y ver todos los usuarios. Para obtener este rol es OBLIGATORIO registrarse con el correo exacto "admin@coworking.com".
+- USER (Usuarios normales): Pueden ver espacios disponibles y hacer reservas. Cualquier otro correo que se registre obtendrá este rol automáticamente.
+
+---------------------------------------------------------
+1. REQUISITOS PREVIOS Y CÓMO ARRANCAR
+---------------------------------------------------------
+1. Abre una terminal en la carpeta raíz del proyecto.
+2. Ejecuta: `docker-compose up --build -d`
+3. Espera 1 minuto y abre los paneles visuales en tu navegador:
+   - Panel Auth (Usuarios):   http://localhost:8001/docs
+   - Panel Spaces (Espacios): http://localhost:8002/swagger/index.html
+   - Panel Reservs (Reservas):http://localhost:8003/swagger-ui/index.html
+
+---------------------------------------------------------
+2. EJEMPLOS DE USO: FLUJO COMO ADMINISTRADOR
+---------------------------------------------------------
+El Administrador es el encargado de dar de alta las oficinas y salas en el sistema.
+
+EJEMPLO 1: REGISTRAR AL ADMIN (Panel Auth 8001)
+1. Ve a `POST /register` -> "Try it out".
+2. Usa este cuerpo JSON EXACTO:
+{
+  "email": "admin@coworking.com",
+  "password": "mypassword123",
+  "full_name": "Administrador Principal",
+  "role": "ADMIN"
+}
+3. Execute. (Recibirás 201).
+
+EJEMPLO 2: INICIAR SESIÓN Y COPIAR TOKEN (Panel Auth 8001)
+1. Ve a `POST /login` -> "Try it out".
+2. username: admin@coworking.com | password: mypassword123
+3. Execute. Copia el "access_token" de la respuesta.
+
+EJEMPLO 3: CREAR UN ESPACIO NUEVO (Panel Spaces 8002)
+1. Dale al botón "Authorize" y pega tu token poniendo "Bearer " al principio (Ej: Bearer eyJhbG...).
+2. Abre `POST /spaces` -> "Try it out".
+{
+  "name": "Sala de Juntas B",
+  "type": "MEETING_ROOM",
+  "capacity": 8,
+  "price_per_hour": 35.00,
+  "amenities": "Proyector 4K, Café",
+  "is_active": true
+}
+3. Execute (201). ¡El Admin ha creado un espacio! Anota el "id" de respuesta.
+
+---------------------------------------------------------
+3. EJEMPLOS DE USO: FLUJO COMO USUARIO NORMAL
+---------------------------------------------------------
+El Usuario normal solo se registra, ve qué espacios hay y realiza su reserva.
+
+EJEMPLO 4: REGISTRAR UN USUARIO CLIENTE (Panel Auth 8001)
+1. Abre `POST /register` -> "Try it out".
+{
+  "email": "cliente.feliz@empresa.com",
+  "password": "cliente123",
+  "full_name": "Cliente Feliz",
+  "role": "USER"
+}
+2. Execute (201). El sistema lo asignará como USER porque el correo no es el del admin.
+
+EJEMPLO 5: INICIAR SESIÓN COMO CLIENTE (Panel Auth 8001)
+1. Abre `POST /login`. 
+2. username: cliente.feliz@empresa.com | password: cliente123
+3. Execute. Copia su "access_token".
+
+EJEMPLO 6: VER ESPACIOS DISPONIBLES (Panel Spaces 8002)
+1. Autoriza Swagger con el nuevo token del cliente (con "Bearer ").
+2. Abre `GET /spaces/available` -> "Try it out".
+3. Execute. Verás una lista de todos los espacios activos (como la Sala de Juntas B que creó el Admin).
+
+EJEMPLO 7: RESERVAR UN ESPACIO (Panel Reservs 8003)
+1. Dale a "Authorize" en este panel y pega el token del cliente (AQUÍ SIN LA PALABRA Bearer, solo el token largo).
+2. Abre `POST /reservations` -> "Try it out".
+{
+  "spaceId": "PEGA_AQUI_EL_ID_DE_LA_SALA",
+  "startTime": "2027-05-15T10:00:00Z",
+  "endTime": "2027-05-15T12:00:00Z"
+}
+3. Execute (201). ¡El cliente ha reservado la sala exitosamente!
+
+---------------------------------------------------------
+4. CÓMO APAGAR EL SISTEMA
+---------------------------------------------------------
+Cuando termines de usar la API, abre tu terminal y ejecuta: `docker-compose down`

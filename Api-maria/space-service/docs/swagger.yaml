@@ -1,0 +1,564 @@
+definitions:
+  models.SpaceType:
+    enum:
+    - DESK
+    - OFFICE
+    - MEETING_ROOM
+    - LOUNGE
+    type: string
+    x-enum-varnames:
+    - SpaceTypeDesk
+    - SpaceTypeOffice
+    - SpaceTypeMeetingRoom
+    - SpaceTypeLounge
+  services.CreateInvoiceInput:
+    properties:
+      amount:
+        type: number
+      due_at:
+        type: string
+      issued_at:
+        type: string
+      reservation_id:
+        type: string
+      user_id:
+        type: string
+    required:
+    - amount
+    - due_at
+    - reservation_id
+    - user_id
+    type: object
+  services.CreateSpaceInput:
+    properties:
+      amenities:
+        type: string
+      capacity:
+        minimum: 1
+        type: integer
+      name:
+        type: string
+      price_per_hour:
+        type: number
+      type:
+        $ref: '#/definitions/models.SpaceType'
+    required:
+    - capacity
+    - name
+    - price_per_hour
+    - type
+    type: object
+  services.UpdateSpaceInput:
+    properties:
+      amenities:
+        type: string
+      capacity:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      price_per_hour:
+        type: number
+      type:
+        $ref: '#/definitions/models.SpaceType'
+    type: object
+info:
+  contact: {}
+  description: Coworking Space Service API
+  title: Space Service API
+  version: "1.0"
+paths:
+  /billing:
+    get:
+      consumes:
+      - application/json
+      description: List invoices with pagination (admin only)
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List invoices
+      tags:
+      - Billing
+    post:
+      consumes:
+      - application/json
+      description: Create a new invoice
+      parameters:
+      - description: Invoice details
+        in: body
+        name: invoice
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateInvoiceInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create invoice
+      tags:
+      - Billing
+  /billing/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get an invoice by ID
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get invoice
+      tags:
+      - Billing
+  /billing/{id}/cancel:
+    patch:
+      consumes:
+      - application/json
+      description: Cancel an invoice (admin only)
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel invoice
+      tags:
+      - Billing
+  /billing/{id}/pay:
+    patch:
+      consumes:
+      - application/json
+      description: Mark an invoice as paid (admin only)
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark invoice as paid
+      tags:
+      - Billing
+  /billing/mine:
+    get:
+      consumes:
+      - application/json
+      description: Returns invoices for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my invoices
+      tags:
+      - Billing
+  /reports/occupancy:
+    get:
+      consumes:
+      - application/json
+      description: Get occupancy report (admin only)
+      parameters:
+      - description: From date (RFC3339 or YYYY-MM-DD)
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: To date (RFC3339 or YYYY-MM-DD)
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Occupancy report
+      tags:
+      - Reports
+  /reports/revenue:
+    get:
+      consumes:
+      - application/json
+      description: Get revenue report (admin only)
+      parameters:
+      - description: From date (RFC3339 or YYYY-MM-DD)
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: To date (RFC3339 or YYYY-MM-DD)
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Revenue report
+      tags:
+      - Reports
+  /reports/spaces:
+    get:
+      consumes:
+      - application/json
+      description: Get spaces report (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Spaces report
+      tags:
+      - Reports
+  /spaces:
+    get:
+      consumes:
+      - application/json
+      description: Returns all spaces; ?active_only=true filters to active ones only.
+      parameters:
+      - description: Active only
+        in: query
+        name: active_only
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List spaces
+      tags:
+      - Spaces
+    post:
+      consumes:
+      - application/json
+      description: Create a new space (admin only)
+      parameters:
+      - description: Space to create
+        in: body
+        name: space
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateSpaceInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create space
+      tags:
+      - Spaces
+  /spaces/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete/Deactivate a space by ID (admin only)
+      parameters:
+      - description: Space ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete space
+      tags:
+      - Spaces
+    get:
+      consumes:
+      - application/json
+      description: Get a space by ID
+      parameters:
+      - description: Space ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get space
+      tags:
+      - Spaces
+    put:
+      consumes:
+      - application/json
+      description: Update an existing space by ID (admin only)
+      parameters:
+      - description: Space ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Space update info
+        in: body
+        name: space
+        required: true
+        schema:
+          $ref: '#/definitions/services.UpdateSpaceInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update space
+      tags:
+      - Spaces
+  /spaces/available:
+    get:
+      consumes:
+      - application/json
+      description: Get available spaces filtered by type and min_capacity
+      parameters:
+      - description: Space type
+        in: query
+        name: type
+        type: string
+      - description: Minimum capacity
+        in: query
+        name: min_capacity
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get available spaces
+      tags:
+      - Spaces
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

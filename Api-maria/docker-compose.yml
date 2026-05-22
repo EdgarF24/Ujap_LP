@@ -1,0 +1,189 @@
+networks:
+  coworking-network:
+    driver: bridge
+
+volumes:
+  auth_db_data:
+  spaces_db_data:
+  reservations_db_data:
+
+services:
+
+  # ─────────────────────────────────────────────
+  # Databases
+  # ─────────────────────────────────────────────
+
+  auth-db:
+    image: postgres:15
+    container_name: auth-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_pass
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - coworking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  spaces-db:
+    image: postgres:15
+    container_name: spaces-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spaces_user
+      POSTGRES_PASSWORD: spaces_pass
+      POSTGRES_DB: spaces_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - spaces_db_data:/var/lib/postgresql/data
+    networks:
+      - coworking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spaces_user -d spaces_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  reservations-db:
+    image: postgres:15
+    container_name: reservations-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: res_user
+      POSTGRES_PASSWORD: res_pass
+      POSTGRES_DB: reservations_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - reservations_db_data:/var/lib/postgresql/data
+    networks:
+      - coworking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U res_user -d reservations_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ─────────────────────────────────────────────
+  # Application Services
+  # ─────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    ports:
+      - "8001:8001"
+    networks:
+      - coworking-network
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  space-service:
+    build:
+      context: ./space-service
+      dockerfile: Dockerfile
+    container_name: space-service
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      - DB_HOST=${SPACES_DB_HOST}
+      - DB_PORT=${SPACES_DB_PORT}
+      - DB_USER=${SPACES_DB_USER}
+      - DB_PASS=${SPACES_DB_PASS}
+      - DB_NAME=${SPACES_DB_NAME}
+    ports:
+      - "8002:8002"
+    networks:
+      - coworking-network
+    depends_on:
+      spaces-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  reservation-service:
+    build:
+      context: ./reservation-service
+      dockerfile: Dockerfile
+    container_name: reservation-service
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    ports:
+      - "8003:8003"
+    networks:
+      - coworking-network
+    depends_on:
+      reservations-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      space-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────
+  # API Gateway (Nginx)
+  # ─────────────────────────────────────────────
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx-gateway
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    ports:
+      - "80:80"
+    networks:
+      - coworking-network
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      space-service:
+        condition: service_healthy
+      reservation-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
